@@ -22,6 +22,11 @@ jobs:
 
       - name: Verificar última versión de Go
         run: |
+          sudo apt update && sudo apt upgrade -y
+          sudo apt install -y curl 
+
+      - name: Verificar última versión de Go
+        run: |
           LATEST_GO_VERSION=$(curl -s https://go.dev/VERSION?m=text | head -n 1 | cut -c 3-)
           echo "LATEST_GO_VERSION=${LATEST_GO_VERSION}" >> $GITHUB_ENV
           if [ "${{ env.GO_VERSION }}" != "${LATEST_GO_VERSION}" ]; then
