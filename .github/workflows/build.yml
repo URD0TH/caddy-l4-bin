@@ -50,8 +50,35 @@ jobs:
 
       - name: Download checksums file
         run: |
-          CHECKSUMS_URL=$(curl -s https://api.github.com/repos/caddyserver/xcaddy/releases/latest | grep "browser_download_url.*checksums.txt" | cut -d : -f 2,3 | tr -d \")
-          curl -sL -o checksums.txt "$CHECKSUMS_URL"
+          # Obtener la URL del último release
+          RELEASE_DATA=$(curl -sL https://api.github.com/repos/caddyserver/xcaddy/releases/latest)
+          if [ $? -ne 0 ]; then
+            echo "Error al obtener datos del release"
+            exit 1
+          fi
+          
+          # Extraer URL del archivo checksums
+          CHECKSUMS_URL=$(echo "$RELEASE_DATA" | grep -o 'https://.*checksums.txt' | head -n1)
+          if [ -z "$CHECKSUMS_URL" ]; then
+            echo "No se pudo encontrar la URL del archivo checksums"
+            exit 1
+          fi
+          
+          # Descargar archivo checksums
+          echo "Descargando checksums desde: $CHECKSUMS_URL"
+          HTTP_CODE=$(curl -sL -w "%{http_code}" -o checksums.txt "$CHECKSUMS_URL")
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Error al descargar checksums. Código HTTP: $HTTP_CODE"
+            exit 1
+          fi
+          
+          # Verificar que el archivo no esté vacío
+          if [ ! -s checksums.txt ]; then
+            echo "El archivo checksums está vacío"
+            exit 1
+          fi
+          
+          echo "✅ Archivo checksums descargado correctamente"
 
       - name: Download and verify AMD64 build
         run: |
