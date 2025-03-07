@@ -4,9 +4,11 @@ env:
   GO_VERSION: '1.24.1'
 
 on:
-  push:
+push:
+    branches:
+    - main
     tags:
-      - 'build*'
+    - 'build*'
 
 jobs:
   build:
