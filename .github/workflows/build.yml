@@ -1,70 +1,115 @@
-name: Build and Release Caddy
+name: Build Caddy
+
+env:
+  GO_VERSION: '1.24.1'
 
 on:
   push:
-    branches:
-      - main
     tags:
-      - 'comp*'
-
-permissions:
-  contents: write
+      - 'build'
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [amd64, arm64]
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.22'
+      - name: Verificar última versión de Go
+        run: |
+          LATEST_GO_VERSION=$(curl -s https://go.dev/VERSION?m=text | head -n 1 | cut -c 3-)
+          echo "LATEST_GO_VERSION=${LATEST_GO_VERSION}" >> $GITHUB_ENV
+          if [ "${{ env.GO_VERSION }}" != "${LATEST_GO_VERSION}" ]; then
+            echo "⚠️ Advertencia: La versión de Go (${{ env.GO_VERSION }}) no es la más reciente (${LATEST_GO_VERSION})"
+          else
+            echo "✅ Usando la última versión de Go"
+          fi
 
-    - name: Install cross-compilation tools
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc-aarch64-linux-gnu
+      - name: Setup Go ${{ env.GO_VERSION }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
 
-    - name: Set Version
-      run: echo "VERSION=$(date +'%Y%m%d%H%M')" >> $GITHUB_ENV
-
-    - name: Build for ${{ matrix.arch }}
-      env:
-        GOARCH: ${{ matrix.arch }}
-      run: |
-        # Configurar compilación para arm64
-        if [ "${{ matrix.arch }}" == "arm64" ]; then
-          export CC=aarch64-linux-gnu-gcc
-          export CGO_ENABLED=1
-        fi
-
-        # Instalar xcaddy
-        go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+      - name: Create temp directory
+        run: |
+          mkdir -p ./temp/xcaddy
+          cd ./temp/xcaddy
         
-        # Asegurarse que xcaddy está en el PATH correcto
-        export PATH=/usr/local/bin:$PATH
-        which xcaddy
+      - name: Set Version
+        run: echo "VERSION=$(date +'%Y%m%d%H%M')" >> $GITHUB_ENV
 
-        # Compilar
-        xcaddy build \
-          --with github.com/mholt/caddy-l4@latest \
-          --output "caddy-l4-${{ matrix.arch }}-${{ env.VERSION }}"
+      - name: Download checksums file
+        run: |
+          CHECKSUMS_URL=$(curl -s https://api.github.com/repos/caddyserver/xcaddy/releases/latest | grep "browser_download_url.*checksums.txt" | cut -d : -f 2,3 | tr -d \")
+          curl -sL -o checksums.txt "$CHECKSUMS_URL"
 
-        # Verificar arquitectura
-        file "caddy-l4-${{ matrix.arch }}-${{ env.VERSION }}"
+      - name: Download and verify AMD64 build
+        run: |
+          cd ./temp/xcaddy
+          # Descargar archivo AMD64
+          URL=$(curl -s https://api.github.com/repos/caddyserver/xcaddy/releases/latest | grep "browser_download_url.*caddy_.*_linux_amd64.tar.gz" | cut -d : -f 2,3 | tr -d \")
+          XCADDYV=$(curl -s https://api.github.com/repos/caddyserver/xcaddy/releases/latest | grep '"name": "v' | cut -d'"' -f4 | sed 's/v//')
+          echo "XCADDYV=$XCADDYV" >> $GITHUB_ENV
+          FILENAME=$(echo "$AMD64_URL" | grep -o "caddy_.*_linux_amd64.tar.gz")
+          curl -sL -o caddy_amd64.tar.gz "$URL"
+          
+          # Verificar checksum
+          EXPECTED_CHECKSUM=$(grep "$FILENAME" checksums.txt | awk '{print $1}')
+          ACTUAL_CHECKSUM=$(sha256sum caddy_amd64.tar.gz | awk '{print $1}')
+          
+          if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
+            echo "Error: Checksum verification failed"
+            exit 1
+          fi
+          
+          # Extraer archivo
+          tar -xvf caddy_amd64.tar.gz
 
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      if: success()
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: v${{ env.VERSION }}
-        name: Caddy L4 ${{ env.VERSION }}
-        files: caddy-l4-${{ matrix.arch }}-${{ env.VERSION }}
+      - name: compilar xcaddy amd64 layer 4 y cloudflare
+        run: |
+          #compilar xcaddy para amd64 layer 4 y cloudflare
+          GOARCH=amd64 GOOS=linux ./xcaddy build --with github.com/caddy-dns/cloudflare --with github.com/mholt/caddy-l4 --output caddy_amd64_v${{ env.VERSION }}
+          echo "Caddy compiled successfully"
+          # Comprimir en tar.gz
+          tar -czf caddy_amd64_v${{ env.VERSION }}.tar.gz caddy_amd64_v${{ env.VERSION }}
+          
+          # Verificar arquitectura
+          file "caddy_amd64_v${{ env.VERSION }}.tar.gz"
+   
+
+      - name: compilar xcaddy arm64 layer 4 y cloudflare
+        run: |
+          #compilar xcaddy para arm64 layer 4 y cloudflare
+          GOARCH=arm64 GOOS=linux ./xcaddy build --with github.com/caddy-dns/cloudflare --with github.com/mholt/caddy-l4 --output caddy_arm64_v${{ env.VERSION }}
+          echo "Caddy compiled successfully"
+          # Comprimir en tar.gz
+          tar -czf caddy_arm64_v${{ env.VERSION }}.tar.gz caddy_arm64_v${{ env.VERSION }}
+
+          # Verificar arquitectura
+          file "caddy_arm64_v${{ env.VERSION }}.tar.gz"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        with:
+          tag_name: v${{ env.VERSION }}
+          name: Caddy L4 CF ${{ env.VERSION }}
+          body: |
+            🚀 Build automatizado de Caddy con soporte para Layer 4 y Cloudflare
+            
+            Compilado en GitHub Actions con:
+            - Go ${{ env.GO_VERSION }} $([ "${{ env.GO_VERSION }}" != "${{ env.LATEST_GO_VERSION }}" ] && echo "⚠️ (última: ${{ env.LATEST_GO_VERSION }} se verificara compatibilidad en la proxima versión)")
+            - xcaddy ${{ env.XCADDYV }}
+            
+
+            Incluye:
+            - AMD64 build
+            - ARM64 build
+            
+            Version: ${{ env.VERSION }}
+          draft: false
+          prerelease: false
+          files: |
+            caddy_amd64_v${{ env.VERSION }}.tar.gz
+            caddy_arm64_v${{ env.VERSION }}.tar.gz
