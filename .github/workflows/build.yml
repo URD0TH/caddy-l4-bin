@@ -46,6 +46,10 @@ jobs:
 
         # Instalar xcaddy
         go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+        
+        # Asegurarse que xcaddy está en el PATH correcto
+        export PATH=/usr/local/bin:$PATH
+        which xcaddy
 
         # Compilar
         xcaddy build \
