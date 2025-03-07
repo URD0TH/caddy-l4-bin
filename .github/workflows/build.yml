@@ -1,0 +1,64 @@
+name: Build and Release Caddy
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+
+    - name: Install cross-compilation tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu
+
+    - name: Set Version
+      run: echo "VERSION=$(date +'%Y%m%d%H%M')" >> $GITHUB_ENV
+
+    - name: Build for ${{ matrix.arch }}
+      env:
+        GOARCH: ${{ matrix.arch }}
+      run: |
+        # Configurar compilación para arm64
+        if [ "${{ matrix.arch }}" == "arm64" ]; then
+          export CC=aarch64-linux-gnu-gcc
+          export CGO_ENABLED=1
+        fi
+
+        # Instalar xcaddy
+        go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+
+        # Compilar
+        xcaddy build \
+          --with github.com/mholt/caddy-l4@latest \
+          --output "caddy-l4-${{ matrix.arch }}-${{ env.VERSION }}"
+
+        # Verificar arquitectura
+        file "caddy-l4-${{ matrix.arch }}-${{ env.VERSION }}"
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      if: success()
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ env.VERSION }}
+        name: Caddy L4 ${{ env.VERSION }}
+        files: caddy-l4-${{ matrix.arch }}-${{ env.VERSION }}
