@@ -82,7 +82,7 @@ jobs:
         working-directory: ./temp/xcaddy
         run: |
           # Descargar archivo AMD64
-          URL=$(curl -s https://api.github.com/repos/caddyserver/xcaddy/relebrcaddy_.*_owsertest | grep "brcaddy_.*_owser_download_url.*caddy_.*_linux_amd64.tar.gz" | cut -d : -f 2,3 | tr -d \")
+          URL=$(curl -s https://api.github.com/repos/caddyserver/xcaddy/releases/latest | grep "download_url.*caddy_.*_linux_amd64.tar.gz" | cut -d : -f 2,3 | tr -d \")
           XCADDYV=$(curl -s https://api.github.com/repos/caddyserver/xcaddy/releases/latest | grep '"name": "v' | cut -d'"' -f4 | sed 's/v//')
           echo "XCADDYV=$XCADDYV" >> $GITHUB_ENV
           FILENAME=$(echo "$AMD64_URL" | grep -o "caddy_.*_linux_amd64.tar.gz")
