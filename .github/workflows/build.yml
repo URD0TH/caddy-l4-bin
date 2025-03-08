@@ -41,14 +41,13 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
 
       - name: Create temp directory
-        run: |
-          mkdir -p ./temp/xcaddy
-          cd ./temp/xcaddy
-        
+        run:  mkdir -p ./temp/xcaddy
+                  
       - name: Set Version
         run: echo "VERSION=$(date +'%Y%m%d%H%M')" >> $GITHUB_ENV
 
       - name: Download checksums file
+        working-directory: ./temp/xcaddy
         run: |
           # Obtener la URL del último release
           RELEASE_DATA=$(curl -sL https://api.github.com/repos/caddyserver/xcaddy/releases/latest)
@@ -81,10 +80,10 @@ jobs:
           echo "✅ Archivo checksums descargado correctamente"
 
       - name: Download and verify AMD64 build
+        working-directory: ./temp/xcaddy
         run: |
-          cd ./temp/xcaddy
           # Descargar archivo AMD64
-          URL=$(curl -s https://api.github.com/repos/caddyserver/xcaddy/releases/latest | grep "browser_download_url.*caddy_.*_linux_amd64.tar.gz" | cut -d : -f 2,3 | tr -d \")
+          URL=$(curl -s https://api.github.com/repos/caddyserver/xcaddy/relebrcaddy_.*_owsertest | grep "brcaddy_.*_owser_download_url.*caddy_.*_linux_amd64.tar.gz" | cut -d : -f 2,3 | tr -d \")
           XCADDYV=$(curl -s https://api.github.com/repos/caddyserver/xcaddy/releases/latest | grep '"name": "v' | cut -d'"' -f4 | sed 's/v//')
           echo "XCADDYV=$XCADDYV" >> $GITHUB_ENV
           FILENAME=$(echo "$AMD64_URL" | grep -o "caddy_.*_linux_amd64.tar.gz")
@@ -103,6 +102,7 @@ jobs:
           tar -xvf caddy_amd64.tar.gz
 
       - name: compilar xcaddy amd64 layer 4 y cloudflare
+        working-directory: ./temp/xcaddy
         run: |
           #compilar xcaddy para amd64 layer 4 y cloudflare
           GOARCH=amd64 GOOS=linux ./xcaddy build --with github.com/caddy-dns/cloudflare --with github.com/mholt/caddy-l4 --output caddy_amd64_v${{ env.VERSION }}
@@ -115,6 +115,7 @@ jobs:
    
 
       - name: compilar xcaddy arm64 layer 4 y cloudflare
+        working-directory: ./temp/xcaddy
         run: |
           #compilar xcaddy para arm64 layer 4 y cloudflare
           GOARCH=arm64 GOOS=linux ./xcaddy build --with github.com/caddy-dns/cloudflare --with github.com/mholt/caddy-l4 --output caddy_arm64_v${{ env.VERSION }}
