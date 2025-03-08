@@ -77,26 +77,50 @@ jobs:
           fi
           
           echo "✅ Archivo checksums descargado correctamente"
-
+          ls -la
+          echo ""
+          echo ""
+          echo ""
+          echo "Contenido del archivo checksums:"
+          cat checksums.txt
+          
       - name: Download and verify AMD64 build
         working-directory: ./temp/xcaddy
         run: |
           # Descargar archivo AMD64
-          URL=$(curl -s https://api.github.com/repos/caddyserver/xcaddy/releases/latest | grep "download_url.*caddy_.*_linux_amd64.tar.gz" | cut -d : -f 2,3 | tr -d \")
+          URL=$(curl -s https://api.github.com/repos/caddyserver/xcaddy/releases/latest | grep "download_url.*linux_amd64.tar.gz" | cut -d : -f 2,3 | tr -d \")
           XCADDYV=$(curl -s https://api.github.com/repos/caddyserver/xcaddy/releases/latest | grep '"name": "v' | cut -d'"' -f4 | sed 's/v//')
           echo "XCADDYV=$XCADDYV" >> $GITHUB_ENV
-          FILENAME=$(echo "$AMD64_URL" | grep -o "caddy_.*_linux_amd64.tar.gz")
+
+          # Construir nombre del archivo esperado
+          FILENAME=$(echo "$URL" | grep -o "caddy_.*_linux_amd64.tar.gz")
           curl -sL -o caddy_amd64.tar.gz "$URL"
-          
-          # Verificar checksum
-          EXPECTED_CHECKSUM=$(grep "$FILENAME" checksums.txt | awk '{print $1}')
-          ACTUAL_CHECKSUM=$(sha256sum caddy_amd64.tar.gz | awk '{print $1}')
-          
-          if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
-            echo "Error: Checksum verification failed"
-            exit 1
+
+          # Debug para verificar nombres de archivo
+          echo "Buscando checksum para archivo: $FILENAME"
+          echo "Contenido de checksums.txt:"
+          cat checksums.txt
+
+          # Verificar checksum con más validaciones
+          EXPECTED_CHECKSUM=$(grep "${FILENAME}" checksums.txt | cut -d' ' -f1)
+          if [ -z "$EXPECTED_CHECKSUM" ]; then
+              echo "❌ Error: No se encontró el checksum para ${FILENAME}"
+              exit 1
           fi
-          
+
+          echo "✅ Hash encontrado: $EXPECTED_CHECKSUM"
+          ACTUAL_CHECKSUM=$(sha512sum caddy_amd64.tar.gz | cut -d' ' -f1)
+          echo "🔍 Hash calculado: $ACTUAL_CHECKSUM"
+
+          if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
+              echo "❌ Error: La verificación del checksum falló"
+              echo "Esperado: $EXPECTED_CHECKSUM"
+              echo "Obtenido: $ACTUAL_CHECKSUM"
+              exit 1
+          fi
+
+          echo "✅ Verificación de checksum exitosa"
+
           # Extraer archivo
           tar -xvf caddy_amd64.tar.gz
 
