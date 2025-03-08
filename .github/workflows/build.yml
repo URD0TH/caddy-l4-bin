@@ -20,9 +20,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verificar última versión de Go
+      - name: Install curl
         run: |
-          sudo apt update && sudo apt upgrade -y
           sudo apt install -y curl 
 
       - name: Verificar última versión de Go
