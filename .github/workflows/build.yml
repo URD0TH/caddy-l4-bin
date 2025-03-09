@@ -189,7 +189,7 @@ jobs:
           file "caddy_arm64_v${{ env.VERSION }}.tar.gz"
 
           CURRENT_PATH=$(pwd) 
-          echo "$CURRENT_PATH" >> $GITHUB_ENV
+          echo "CURRENT_PATH=$CURRENT_PATH" >> $GITHUB_ENV
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -215,5 +215,5 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            ${{ CURRENT_PATH }}/caddy_amd64_v${{ env.VERSION }}.tar.gz
-            ${{ CURRENT_PATH }}/caddy_arm64_v${{ env.VERSION }}.tar.gz
+            ${{ env.CURRENT_PATH }}/caddy_amd64_v${{ env.VERSION }}.tar.gz
+            ${{ env.CURRENT_PATH }}/caddy_arm64_v${{ env.VERSION }}.tar.gz
