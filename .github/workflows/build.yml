@@ -172,6 +172,9 @@ jobs:
           
           # Verificar arquitectura
           file "caddy_amd64_v${{ env.VERSION }}.tar.gz"
+
+          #verificar checksum
+          sha512sum caddy_amd64_v${{ env.VERSION }}.tar.gz | cut -d ' ' -f1 > caddy_amd64_v${{ env.VERSION }}.tar.gz.sha512
    
 
       - name: compilar xcaddy arm64 layer 4 y cloudflare
@@ -185,6 +188,9 @@ jobs:
 
           # Verificar arquitectura
           file "caddy_arm64_v${{ env.VERSION }}.tar.gz"
+
+          #verificar checksum
+          sha512sum caddy_arm64_v${{ env.VERSION }}.tar.gz | cut -d ' ' -f1 > caddy_amd64_v${{ env.VERSION }}.tar.gz.sha512
 
           CURRENT_PATH=$(pwd) 
           echo "CURRENT_PATH=$CURRENT_PATH" >> $GITHUB_ENV
@@ -214,4 +220,6 @@ jobs:
           prerelease: false
           files: |
             ${{ env.CURRENT_PATH }}/caddy_amd64_v${{ env.VERSION }}.tar.gz
+            ${{ env.CURRENT_PATH }}/caddy_amd64_v${{ env.VERSION }}.tar.gz.sha512
             ${{ env.CURRENT_PATH }}/caddy_arm64_v${{ env.VERSION }}.tar.gz
+            ${{ env.CURRENT_PATH }}/caddy_arm64_v${{ env.VERSION }}.tar.gz.sha512
