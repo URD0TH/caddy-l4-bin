@@ -88,38 +88,77 @@ jobs:
         working-directory: ./temp/xcaddy
         run: |
           # Descargar archivo AMD64
-          URL=$(curl -s https://api.github.com/repos/caddyserver/xcaddy/releases/latest | grep "download_url.*linux_amd64.tar.gz" | cut -d : -f 2,3 | tr -d \")
-          XCADDYV=$(curl -s https://api.github.com/repos/caddyserver/xcaddy/releases/latest | grep '"name": "v' | cut -d'"' -f4 | sed 's/v//')
-          echo "XCADDYV=$XCADDYV" >> $GITHUB_ENV
-
-          # Construir nombre del archivo esperado
-          FILENAME=$(echo "$URL" | grep -o "caddy_.*_linux_amd64.tar.gz")
-          curl -sL -o caddy_amd64.tar.gz "$URL"
-
-          # Debug para verificar nombres de archivo
-          echo "Buscando checksum para archivo: $FILENAME"
-          echo "Contenido de checksums.txt:"
-          cat checksums.txt
-
-          # Verificar checksum con más validaciones
-          EXPECTED_CHECKSUM=$(grep "${FILENAME}" checksums.txt | cut -d' ' -f1)
-          if [ -z "$EXPECTED_CHECKSUM" ]; then
-              echo "❌ Error: No se encontró el checksum para ${FILENAME}"
-              exit 1
+          # Obtener datos del release
+          RELEASE_DATA=$(curl -s https://api.github.com/repos/caddyserver/xcaddy/releases/latest)
+          if [ $? -ne 0 ]; then
+            echo "❌ Error (10): Falló la obtención de datos del release"
+            exit 10
+          fi
+          
+          # Extraer URL y versión
+          URL=$(echo "$RELEASE_DATA" | grep "browser_download_url.*linux_amd64.tar.gz" | cut -d '"' -f 4)
+          if [ -z "$URL" ]; then
+            echo "❌ Error (11): No se pudo extraer la URL del archivo AMD64"
+            exit 11
           fi
 
-          echo "✅ Hash encontrado: $EXPECTED_CHECKSUM"
-          ACTUAL_CHECKSUM=$(sha512sum caddy_amd64.tar.gz | cut -d' ' -f1)
-          echo "🔍 Hash calculado: $ACTUAL_CHECKSUM"
+          XCADDYV=$(echo "$RELEASE_DATA" | grep '"tag_name"' | cut -d '"' -f 4 | sed 's/^v//')
+          if [ -z "$XCADDYV" ]; then
+            echo "❌ Error (12): No se pudo extraer la versión de xcaddy"
+            exit 12
+          fi
+          
+          echo "XCADDYV=$XCADDYV" #>> $GITHUB_ENV
+          echo "🔍 URL: $URL"
+          echo "📦 Versión: $XCADDYV"
 
+          # Construir nombre del archivo esperado y descargarlo
+          FILENAME=$(echo "$URL" | grep -o "xcaddy_.*_linux_amd64.tar.gz")
+          echo "📄 Nombre del archivo a buscar: $FILENAME"
+
+          curl -sL -o caddy_amd64.tar.gz "$URL"
+          if [ ! -f caddy_amd64.tar.gz ]; then
+            echo "❌ Error (13): Falló la descarga del archivo"
+            exit 13
+          fi
+
+          # Verificar existencia del archivo checksums
+          if [ ! -f checksums.txt ]; then
+            echo "❌ Error (14): No se encuentra el archivo checksums.txt"
+            exit 14
+          fi
+
+          # Buscar y verificar checksum
+          echo "🔐 Buscando checksum para: $FILENAME"
+          EXPECTED_CHECKSUM=$(grep -w "$FILENAME" checksums.txt | cut -d ' ' -f1)
+          if [ -z "$EXPECTED_CHECKSUM" ]; then
+              echo "❌ Error (15): No se encontró el checksum para ${FILENAME}"
+              echo "Contenido actual de checksums.txt:"
+              cat checksums.txt
+              exit 15
+          fi
+
+          echo "🔍 Hash encontrado"
+          echo ""
+
+          ACTUAL_CHECKSUM=$(sha512sum caddy_amd64.tar.gz | cut -d ' ' -f1)
+          if [ -z "$ACTUAL_CHECKSUM" ]; then
+              echo "❌ Error (16): No se pudo calcular el hash del archivo descargado"
+              exit 16
+          fi
+          echo "🧮 Hash calculado"
+          echo ""
+          
+                  
           if [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
-              echo "❌ Error: La verificación del checksum falló"
+              echo "❌ Error (17): La verificación del checksum falló"
               echo "Esperado: $EXPECTED_CHECKSUM"
               echo "Obtenido: $ACTUAL_CHECKSUM"
-              exit 1
+              exit 17
+          else
+              echo "✅ Checksum verificado $EXPECTED_CHECKSUM"
+              echo ""
           fi
-
-          echo "✅ Verificación de checksum exitosa"
 
           # Extraer archivo
           tar -xvf caddy_amd64.tar.gz
@@ -150,6 +189,7 @@ jobs:
           file "caddy_arm64_v${{ env.VERSION }}.tar.gz"
 
       - name: Create Release
+        working-directory: ./temp/xcaddy
         uses: softprops/action-gh-release@v1
         if: success()
         env:
