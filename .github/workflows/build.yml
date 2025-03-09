@@ -108,7 +108,7 @@ jobs:
             exit 12
           fi
           
-          echo "XCADDYV=$XCADDYV" #>> $GITHUB_ENV
+          echo "XCADDYV=$XCADDYV" >> $GITHUB_ENV
           echo "🔍 URL: $URL"
           echo "📦 Versión: $XCADDYV"
 
@@ -188,6 +188,9 @@ jobs:
           # Verificar arquitectura
           file "caddy_arm64_v${{ env.VERSION }}.tar.gz"
 
+          CURRENT_PATH=$(pwd) 
+          echo "$CURRENT_PATH" >> $GITHUB_ENV
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         if: success()
@@ -200,7 +203,7 @@ jobs:
             🚀 Build automatizado de Caddy con soporte para Layer 4 y Cloudflare
             
             Compilado en GitHub Actions con:
-            - Go ${{ env.GO_VERSION }} $([ "${{ env.GO_VERSION }}" != "${{ env.LATEST_GO_VERSION }}" ] && echo "⚠️ (última: ${{ env.LATEST_GO_VERSION }} se verificara compatibilidad en la proxima versión)")
+            - Go ${{ env.GO_VERSION }}
             - xcaddy ${{ env.XCADDYV }}
             
 
@@ -212,5 +215,5 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            caddy_amd64_v${{ env.VERSION }}.tar.gz
-            caddy_arm64_v${{ env.VERSION }}.tar.gz
+            ${{ CURRENT_PATH }}/caddy_amd64_v${{ env.VERSION }}.tar.gz
+            ${{ CURRENT_PATH }}/caddy_arm64_v${{ env.VERSION }}.tar.gz
