@@ -2,10 +2,8 @@ name: Build Caddy
 
 on:
   push:
-     branches:
-        main
-     tags:
-       - 'build*'
+    tags:
+      - 'build*'
 
 permissions:
   contents: write
