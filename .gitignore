@@ -1,5 +1,0 @@
-.DS_Store
-.github/workflows/build-amd64.yml
-.gitignore
-xcaddy_0.4.4_checksums.txt
-temp
