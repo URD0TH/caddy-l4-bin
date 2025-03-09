@@ -189,7 +189,6 @@ jobs:
           file "caddy_arm64_v${{ env.VERSION }}.tar.gz"
 
       - name: Create Release
-        working-directory: ./temp/xcaddy
         uses: softprops/action-gh-release@v1
         if: success()
         env:
