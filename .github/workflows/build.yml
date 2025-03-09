@@ -192,7 +192,7 @@ jobs:
           file "caddy_arm64_v${{ env.VERSION }}.tar.gz"
 
           #verificar checksum
-          sha512sum caddy_arm64_v${{ env.VERSION }}.tar.gz | cut -d ' ' -f1 > caddy_amd64_v${{ env.VERSION }}.tar.gz.sha512
+          sha512sum caddy_arm64_v${{ env.VERSION }}.tar.gz | cut -d ' ' -f1 > caddy_arm64_v${{ env.VERSION }}.tar.gz.sha512
 
           CURRENT_PATH=$(pwd) 
           echo "CURRENT_PATH=$CURRENT_PATH" >> $GITHUB_ENV
